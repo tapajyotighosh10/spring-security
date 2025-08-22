@@ -1,6 +1,7 @@
 package com.springsecurity.security;
 
 import com.springsecurity.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,6 +10,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+
+import static io.jsonwebtoken.Jwts.parser;
 
 @Component
 public class AuthUtill {
@@ -26,5 +29,14 @@ public class AuthUtill {
                 .expiration(new Date(System.currentTimeMillis() + 1000*60*10))
                 .signWith(getSecretKey())
                 .compact();
+    }
+
+    public String getUsernameFromToken(String token) {
+        Claims claim = Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        return claim.getSubject();
     }
 }
