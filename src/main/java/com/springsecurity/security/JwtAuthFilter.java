@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -23,29 +24,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final UserRepository userRepository;
     private final AuthUtill authUtill;
-
+private final HandlerExceptionResolver handlerExceptionResolver;
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        log.info("incoming request: {}", request.getRequestURI());
 
-        final String requestTokenHeader = request.getHeader("Authorization");
+        try {
+            log.info("incoming request: {}", request.getRequestURI());
 
-        if(requestTokenHeader==null || !requestTokenHeader.startsWith("Bearer ")){
-            log.warn("JWT Token is missing or does not begin with Bearer String");
-            filterChain.doFilter(request,response);
-            return;
+            final String requestTokenHeader = request.getHeader("Authorization");
+
+            if(requestTokenHeader==null || !requestTokenHeader.startsWith("Bearer ")){
+                log.warn("JWT Token is missing or does not begin with Bearer String");
+                filterChain.doFilter(request,response);
+                return;
+            }
+            String token=requestTokenHeader.split("Bearer ")[1];
+            log.info("JWT Token: {}",token);
+            String username=authUtill.getUsernameFromToken(token);
+            log.info("Username from token: {}",username);
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null){
+                User user=userRepository.findByUsername(username).orElseThrow(null);
+                UsernamePasswordAuthenticationToken usernameAndPasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(user,null,user.getAuthorities());
+
+                SecurityContextHolder.getContext().setAuthentication(usernameAndPasswordAuthenticationToken);
+            }
+
+            filterChain.doFilter(request, response);
+        } catch (Exception e) {
+            handlerExceptionResolver.resolveException(request,response,null,e) ;
         }
-        String token=requestTokenHeader.split("Bearer ")[1];
-        log.info("JWT Token: {}",token);
-        String username=authUtill.getUsernameFromToken(token);
-        log.info("Username from token: {}",username);
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null){
-            User user=userRepository.findByUsername(username).orElseThrow(null);
-            UsernamePasswordAuthenticationToken usernameAndPasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(user,null,user.getAuthorities());
-
-            SecurityContextHolder.getContext().setAuthentication(usernameAndPasswordAuthenticationToken);
-        }
-
-        filterChain.doFilter(request, response);
     }
 }
