@@ -2,6 +2,7 @@ package com.springsecurity.security;
 
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,8 +11,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+@Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class WebSecurityConfig {
@@ -31,7 +34,12 @@ private final JwtAuthFilter jwtAuthFilter;
 //                            .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN") // Allow USER and ADMIN both roles for auth endpoints
                             .anyRequest().authenticated() // All other requests require authentication
                     )
-                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                    .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                    .oauth2Login(oAuth2 -> oAuth2.failureHandler(
+                            (request,response,exception) ->{
+                                log.error("Oauth 2 error:{}",exception.getMessage());
+                            }
+                    ));
 
 
             return httpSecurity.build();
